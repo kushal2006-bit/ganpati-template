@@ -14,28 +14,34 @@ const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isInte
 document.querySelectorAll('.event-card,.person,.invite-card,.venue-grid').forEach(el=>{el.style.transition='opacity .7s ease,transform .7s ease';el.style.opacity='0';el.style.transform='translateY(20px)';observer.observe(el)});
 const style=document.createElement('style');style.textContent='.visible{opacity:1!important;transform:none!important}';document.head.appendChild(style);
 
-// Background bhajan: loop is enabled in the audio element. Browsers may block autoplay with sound,
-// so the first normal page click or key press starts playback. The music button remains a manual control.
+// Start the bhajan automatically. Browsers may block audible autoplay until the visitor interacts.
+// The audio starts muted, then we attempt to unmute and play. On the first user interaction,
+// we retry with sound so the bhajan begins without needing a visible play button.
 const music = $('bgMusic');
-const musicToggle = $('musicToggle');
-function updateMusicButton(){
-  musicToggle.textContent = music.paused ? '♪ Play Bhajan' : '❚❚ Pause Bhajan';
-  musicToggle.setAttribute('aria-label', music.paused ? 'Play Ganesh bhajan' : 'Pause Ganesh bhajan');
+
+async function playBhajan(){
+  if(!music) return;
+  try {
+    music.muted = false;
+    await music.play();
+  } catch(error) {
+    // Browser autoplay policy blocked sound. Retry immediately after the first interaction.
+    music.muted = true;
+    try { await music.play(); } catch(e) {}
+  }
 }
-async function startMusic(){
-  try { await music.play(); } catch(e) {}
-  updateMusicButton();
+
+function enableSound(){
+  if(!music) return;
+  music.muted = false;
+  music.play().catch(()=>{});
+  document.removeEventListener('pointerdown', enableSound);
+  document.removeEventListener('keydown', enableSound);
+  document.removeEventListener('touchstart', enableSound);
 }
-musicToggle.addEventListener('click',()=>{
-  if(music.paused) startMusic();
-  else { music.pause(); updateMusicButton(); }
-});
-document.addEventListener('click',event=>{
-  if(event.target.closest('#musicToggle')) return;
-  if(music.paused) startMusic();
-},{passive:true});
-document.addEventListener('keydown',event=>{
-  if(event.target.closest('input,textarea,button,a')) return;
-  if(music.paused) startMusic();
-},{passive:true});
-startMusic();
+
+music.addEventListener('canplay', playBhajan, {once:true});
+window.addEventListener('load', playBhajan);
+document.addEventListener('pointerdown', enableSound, {passive:true, once:true});
+document.addEventListener('keydown', enableSound, {passive:true, once:true});
+document.addEventListener('touchstart', enableSound, {passive:true, once:true});
