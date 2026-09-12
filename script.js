@@ -14,33 +14,57 @@ const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isInte
 document.querySelectorAll('.event-card,.person,.invite-card,.venue-grid').forEach(el=>{el.style.transition='opacity .7s ease,transform .7s ease';el.style.opacity='0';el.style.transform='translateY(20px)';observer.observe(el)});
 const style=document.createElement('style');style.textContent='.visible{opacity:1!important;transform:none!important}';document.head.appendChild(style);
 
-// Try to start the bhajan immediately, including before waiting for window load.
-// Browsers may still block audible autoplay due to their media-autoplay policy.
 const music = $('bgMusic');
+const toggle = $('musicToggle');
+
+function updateMusicButton(){
+  if(!toggle || !music) return;
+  const playing = !music.paused && !music.ended;
+  toggle.textContent = playing ? 'Ⅱ Stop Song' : '♫ Play Song';
+  toggle.setAttribute('aria-label', playing ? 'Stop song' : 'Play song');
+  toggle.setAttribute('aria-pressed', playing ? 'true' : 'false');
+}
 
 function tryPlay(){
   if(!music) return;
+  music.autoplay = true;
   music.volume = 1;
   const attempt = music.play();
-  if(attempt && typeof attempt.catch === 'function') attempt.catch(()=>{});
+  if(attempt && typeof attempt.then === 'function'){
+    attempt.then(updateMusicButton).catch(updateMusicButton);
+  }
 }
 
 if(music){
-  // HTML autoplay is already enabled; reinforce it as early as possible.
-  music.autoplay = true;
-  music.muted = false;
+  updateMusicButton();
+  music.addEventListener('play', updateMusicButton);
+  music.addEventListener('pause', updateMusicButton);
+  music.addEventListener('ended', updateMusicButton);
+
+  // Best effort for browsers that permit audible autoplay.
   tryPlay();
   document.addEventListener('DOMContentLoaded', tryPlay, {once:true});
   window.addEventListener('pageshow', tryPlay, {once:true});
 
-  // Best-effort fallback for browsers that block audible autoplay: the very first
-  // user interaction immediately starts the bhajan, with no visible play button.
+  // If the browser blocks autoplay, the first visitor interaction starts the song.
   const unlock = () => {
-    music.muted = false;
     music.volume = 1;
     tryPlay();
   };
   document.addEventListener('pointerdown', unlock, {once:true, passive:true});
-  document.addEventListener('touchstart', unlock, {once:true, passive:true});
   document.addEventListener('keydown', unlock, {once:true});
+}
+
+if(toggle && music){
+  toggle.addEventListener('click', (event) => {
+    event.preventDefault();
+    if(music.paused || music.ended){
+      music.muted = false;
+      music.volume = 1;
+      music.play().then(updateMusicButton).catch(updateMusicButton);
+    }else{
+      music.pause();
+      updateMusicButton();
+    }
+  });
 }
