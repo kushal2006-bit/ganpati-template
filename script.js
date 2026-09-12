@@ -14,7 +14,8 @@ const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isInte
 document.querySelectorAll('.event-card,.person,.invite-card,.venue-grid').forEach(el=>{el.style.transition='opacity .7s ease,transform .7s ease';el.style.opacity='0';el.style.transform='translateY(20px)';observer.observe(el)});
 const style=document.createElement('style');style.textContent='.visible{opacity:1!important;transform:none!important}';document.head.appendChild(style);
 
-// Background bhajan. Browsers may block sound autoplay, so the first user interaction starts it.
+// Background bhajan: loop is enabled in the audio element. Browsers may block autoplay with sound,
+// so the first normal page click or key press starts playback. The music button remains a manual control.
 const music = $('bgMusic');
 const musicToggle = $('musicToggle');
 function updateMusicButton(){
@@ -29,7 +30,12 @@ musicToggle.addEventListener('click',()=>{
   if(music.paused) startMusic();
   else { music.pause(); updateMusicButton(); }
 });
-['click','touchstart','keydown'].forEach(eventName=>{
-  document.addEventListener(eventName,()=>{ if(music.paused) startMusic(); },{once:true,passive:true});
-});
+document.addEventListener('click',event=>{
+  if(event.target.closest('#musicToggle')) return;
+  if(music.paused) startMusic();
+},{passive:true});
+document.addEventListener('keydown',event=>{
+  if(event.target.closest('input,textarea,button,a')) return;
+  if(music.paused) startMusic();
+},{passive:true});
 startMusic();
