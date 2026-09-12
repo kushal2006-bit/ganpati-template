@@ -28,6 +28,7 @@ function updateMusicButton(){
 function tryPlay(){
   if(!music) return;
   music.autoplay = true;
+  music.muted = false;
   music.volume = 1;
   const attempt = music.play();
   if(attempt && typeof attempt.then === 'function'){
@@ -41,13 +42,22 @@ if(music){
   music.addEventListener('pause', updateMusicButton);
   music.addEventListener('ended', updateMusicButton);
 
-  // Best effort for browsers that permit audible autoplay.
+  // Start immediately on page entry and retry once the audio file is ready.
   tryPlay();
-  document.addEventListener('DOMContentLoaded', tryPlay, {once:true});
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', tryPlay, {once:true});
+  }else{
+    tryPlay();
+  }
+  music.addEventListener('loadeddata', tryPlay, {once:true});
+  music.addEventListener('canplay', tryPlay, {once:true});
   window.addEventListener('pageshow', tryPlay, {once:true});
+  setTimeout(tryPlay, 250);
+  setTimeout(tryPlay, 1000);
 
-  // If the browser blocks autoplay, the first visitor interaction starts the song.
+  // If the browser blocks audible autoplay, the first visitor interaction starts it.
   const unlock = () => {
+    music.muted = false;
     music.volume = 1;
     tryPlay();
   };
