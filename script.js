@@ -13,3 +13,23 @@ tick(); setInterval(tick,1000);
 const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')}),{threshold:.12});
 document.querySelectorAll('.event-card,.person,.invite-card,.venue-grid').forEach(el=>{el.style.transition='opacity .7s ease,transform .7s ease';el.style.opacity='0';el.style.transform='translateY(20px)';observer.observe(el)});
 const style=document.createElement('style');style.textContent='.visible{opacity:1!important;transform:none!important}';document.head.appendChild(style);
+
+// Background bhajan. Browsers may block sound autoplay, so the first user interaction starts it.
+const music = $('bgMusic');
+const musicToggle = $('musicToggle');
+function updateMusicButton(){
+  musicToggle.textContent = music.paused ? '♪ Play Bhajan' : '❚❚ Pause Bhajan';
+  musicToggle.setAttribute('aria-label', music.paused ? 'Play Ganesh bhajan' : 'Pause Ganesh bhajan');
+}
+async function startMusic(){
+  try { await music.play(); } catch(e) {}
+  updateMusicButton();
+}
+musicToggle.addEventListener('click',()=>{
+  if(music.paused) startMusic();
+  else { music.pause(); updateMusicButton(); }
+});
+['click','touchstart','keydown'].forEach(eventName=>{
+  document.addEventListener(eventName,()=>{ if(music.paused) startMusic(); },{once:true,passive:true});
+});
+startMusic();
