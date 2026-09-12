@@ -14,34 +14,31 @@ const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isInte
 document.querySelectorAll('.event-card,.person,.invite-card,.venue-grid').forEach(el=>{el.style.transition='opacity .7s ease,transform .7s ease';el.style.opacity='0';el.style.transform='translateY(20px)';observer.observe(el)});
 const style=document.createElement('style');style.textContent='.visible{opacity:1!important;transform:none!important}';document.head.appendChild(style);
 
-// Start the bhajan automatically. Browsers may block audible autoplay until the visitor interacts.
-// The audio starts muted, then we attempt to unmute and play. On the first user interaction,
-// we retry with sound so the bhajan begins without needing a visible play button.
+// Start the bhajan as soon as the page is ready. Audible autoplay is controlled by the browser;
+// if the browser blocks it, the first tap/click/keypress starts the song automatically without a button.
 const music = $('bgMusic');
 
-async function playBhajan(){
+function startBhajan(withSound = true){
   if(!music) return;
-  try {
+  music.muted = !withSound;
+  const attempt = music.play();
+  if(attempt) attempt.catch(() => {
+    if(withSound){
+      music.muted = true;
+      music.play().catch(()=>{});
+    }
+  });
+}
+
+if(music){
+  startBhajan(true);
+  window.addEventListener('load', () => startBhajan(true), {once:true});
+  const unlock = () => {
     music.muted = false;
-    await music.play();
-  } catch(error) {
-    // Browser autoplay policy blocked sound. Retry immediately after the first interaction.
-    music.muted = true;
-    try { await music.play(); } catch(e) {}
-  }
+    music.volume = 1;
+    music.play().catch(()=>{});
+  };
+  document.addEventListener('click', unlock, {once:true, passive:true});
+  document.addEventListener('touchstart', unlock, {once:true, passive:true});
+  document.addEventListener('keydown', unlock, {once:true});
 }
-
-function enableSound(){
-  if(!music) return;
-  music.muted = false;
-  music.play().catch(()=>{});
-  document.removeEventListener('pointerdown', enableSound);
-  document.removeEventListener('keydown', enableSound);
-  document.removeEventListener('touchstart', enableSound);
-}
-
-music.addEventListener('canplay', playBhajan, {once:true});
-window.addEventListener('load', playBhajan);
-document.addEventListener('pointerdown', enableSound, {passive:true, once:true});
-document.addEventListener('keydown', enableSound, {passive:true, once:true});
-document.addEventListener('touchstart', enableSound, {passive:true, once:true});
