@@ -14,31 +14,33 @@ const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isInte
 document.querySelectorAll('.event-card,.person,.invite-card,.venue-grid').forEach(el=>{el.style.transition='opacity .7s ease,transform .7s ease';el.style.opacity='0';el.style.transform='translateY(20px)';observer.observe(el)});
 const style=document.createElement('style');style.textContent='.visible{opacity:1!important;transform:none!important}';document.head.appendChild(style);
 
-// Start the bhajan as soon as the page is ready. Audible autoplay is controlled by the browser;
-// if the browser blocks it, the first tap/click/keypress starts the song automatically without a button.
+// Try to start the bhajan immediately, including before waiting for window load.
+// Browsers may still block audible autoplay due to their media-autoplay policy.
 const music = $('bgMusic');
 
-function startBhajan(withSound = true){
+function tryPlay(){
   if(!music) return;
-  music.muted = !withSound;
+  music.volume = 1;
   const attempt = music.play();
-  if(attempt) attempt.catch(() => {
-    if(withSound){
-      music.muted = true;
-      music.play().catch(()=>{});
-    }
-  });
+  if(attempt && typeof attempt.catch === 'function') attempt.catch(()=>{});
 }
 
 if(music){
-  startBhajan(true);
-  window.addEventListener('load', () => startBhajan(true), {once:true});
+  // HTML autoplay is already enabled; reinforce it as early as possible.
+  music.autoplay = true;
+  music.muted = false;
+  tryPlay();
+  document.addEventListener('DOMContentLoaded', tryPlay, {once:true});
+  window.addEventListener('pageshow', tryPlay, {once:true});
+
+  // Best-effort fallback for browsers that block audible autoplay: the very first
+  // user interaction immediately starts the bhajan, with no visible play button.
   const unlock = () => {
     music.muted = false;
     music.volume = 1;
-    music.play().catch(()=>{});
+    tryPlay();
   };
-  document.addEventListener('click', unlock, {once:true, passive:true});
+  document.addEventListener('pointerdown', unlock, {once:true, passive:true});
   document.addEventListener('touchstart', unlock, {once:true, passive:true});
   document.addEventListener('keydown', unlock, {once:true});
 }
